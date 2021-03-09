@@ -13,6 +13,18 @@
 #include "reflection.hpp"
 
 namespace sqlcpp::sqlserver {
+	struct sqlserver_date {
+		SQL_DATE_STRUCT ymd_value{};
+		sqlserver_date() = default;
+		sqlserver_date(uint64_t timestamp) {
+			time_t ts = static_cast<time_t>(timestamp);
+			auto s = gmtime(&ts);
+			ymd_value.year = (SQLSMALLINT)(s->tm_year + 1900);
+			ymd_value.month = (SQLUSMALLINT)(s->tm_mon + 1);
+			ymd_value.day = (SQLUSMALLINT)(s->tm_mday);
+		}
+	};
+
 	class connection {
 	private:
 		bool is_health_ = false;
@@ -46,8 +58,8 @@ namespace sqlcpp::sqlserver {
 			if (retcode != SQL_SUCCESS) {
 				throw except::sqlserver_exception("SQLAllocHandle(env) error:" + sqlserver_error(env_, SQL_HANDLE_ENV));
 			}
-		
-			retcode = SQLSetEnvAttr(env_, SQL_ATTR_ODBC_VERSION, (SQLPOINTER*)SQL_OV_ODBC3, 0);
+
+			retcode = SQLSetEnvAttr(env_, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0);
 			if (retcode != SQL_SUCCESS) {
 				throw except::sqlserver_exception("SQLSetEnvAttr(version) error:" + sqlserver_error(env_, SQL_HANDLE_ENV));
 			}
@@ -245,21 +257,21 @@ namespace sqlcpp::sqlserver {
 			else if constexpr (std::is_convertible_v<T, std::string> || is_char_array_v<T> || std::is_same_v<T, std::string_view>) { //str
 				return std::pair{ SQL_C_CHAR,SQL_CHAR };
 			}
-			/*else if constexpr (std::is_same_v<mysql_timestamp, T>) {
-				return std::pair{ MYSQL_TYPE_TIMESTAMP ,false };
-			}*/
+			else if constexpr (std::is_same_v<sqlserver_date, T>) {
+				return std::pair{ SQL_C_TYPE_DATE ,SQL_TYPE_DATE };
+			}
 			else {
 				static_assert(always_false_v<T>, "can not map to sqlserver type");
 			}
 		}
 
 		template <typename T>
-		constexpr void build_bind_param(SQLUSMALLINT index, T&& t) {
+		constexpr std::enable_if_t<!is_optional_v<std::decay_t<T>>> build_bind_param(SQLUSMALLINT index, T&& t) {
 			using U = std::remove_cv_t<std::remove_reference_t<decltype(t)>>;
 			if constexpr (std::is_arithmetic_v<U>) { //built-in types
-				SQLLEN flag = 0;
+				//SQLLEN flag = 0;
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, &t, 0, &flag);
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, &t, 0, /*&flag*/nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
@@ -285,10 +297,69 @@ namespace sqlcpp::sqlserver {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
 			}
-			/*else if constexpr (std::is_same_v<U, mysql_timestamp>) {
-				param.buffer = const_cast<MYSQL_TIME*>(&t.mt);
-				param.buffer_type = mysql_type_map(t).first;
-			}*/
+			else if constexpr (std::is_same_v<U, sqlserver_date>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, /*sizeof(SQL_DATE_STRUCT)*/10, 0, &t.ymd_value, 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else {
+				static_assert(always_false_v<U>, "type do not match");
+			}
+		}
+
+		template <typename T>
+		std::enable_if_t<is_optional_v<std::decay_t<T>>> build_bind_param(SQLUSMALLINT index, T&& t) {
+			using U = typename std::remove_cv_t<std::remove_reference_t<decltype(t)>>::value_type;
+			if (!t.has_value()) {
+				U v{};
+				static SQLLEN flag = SQL_NULL_DATA;
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, 0, 0, &flag);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+				return;
+			}
+
+			auto& v = t.value();
+			if constexpr (std::is_arithmetic_v<U>) { //built-in types
+				//SQLLEN flag = 0;
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, &v, 0, /*&flag*/nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (is_char_array_v<U>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, sizeof(U) - 1, 0, const_cast<char*>(v), 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (is_char_pointer_v<U>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, strlen(v), 0, const_cast<char*>(v), 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (std::is_convertible_v<U, std::string> || std::is_same_v<U, std::string_view>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, v.length(), 0, const_cast<char*>(v.data()), 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (std::is_same_v<U, sqlserver_date>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, &v.ymd_value, 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
 			else {
 				static_assert(always_false_v<U>, "type do not match");
 			}
