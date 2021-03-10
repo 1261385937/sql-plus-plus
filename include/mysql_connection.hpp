@@ -21,8 +21,8 @@ namespace sqlcpp::mysql {
 	struct mysql_timestamp {
 		MYSQL_TIME mt{};
 		mysql_timestamp(uint64_t timestamp) {
-			std::time_t ts = static_cast<std::time_t>(timestamp);
-			auto s = std::gmtime(&ts);
+			time_t ts = static_cast<time_t>(timestamp);
+			auto s = localtime(&ts);
 			mt.year = (unsigned int)s->tm_year + 1900;
 			mt.month = (unsigned int)s->tm_mon + 1;
 			mt.day = (unsigned int)s->tm_mday;

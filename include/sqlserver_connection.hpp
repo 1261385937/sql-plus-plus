@@ -14,14 +14,29 @@
 
 namespace sqlcpp::sqlserver {
 	struct sqlserver_date {
-		SQL_DATE_STRUCT ymd_value{};
+		SQL_DATE_STRUCT value{};
 		sqlserver_date() = default;
 		sqlserver_date(uint64_t timestamp) {
 			time_t ts = static_cast<time_t>(timestamp);
-			auto s = gmtime(&ts);
-			ymd_value.year = (SQLSMALLINT)(s->tm_year + 1900);
-			ymd_value.month = (SQLUSMALLINT)(s->tm_mon + 1);
-			ymd_value.day = (SQLUSMALLINT)(s->tm_mday);
+			auto s = localtime(&ts);
+			value.year = (SQLSMALLINT)(s->tm_year + 1900);
+			value.month = (SQLUSMALLINT)(s->tm_mon + 1);
+			value.day = (SQLUSMALLINT)(s->tm_mday);
+		}
+	};
+
+	struct sqlserver_datetime {
+		SQL_TIMESTAMP_STRUCT value{};
+		sqlserver_datetime() = default;
+		sqlserver_datetime(uint64_t timestamp) {
+			time_t ts = static_cast<time_t>(timestamp);
+			auto s = localtime(&ts);
+			value.year = (SQLSMALLINT)(s->tm_year + 1900);
+			value.month = (SQLUSMALLINT)(s->tm_mon + 1);
+			value.day = (SQLUSMALLINT)(s->tm_mday);
+			value.hour = (SQLUSMALLINT)s->tm_hour;
+			value.minute = (SQLUSMALLINT)s->tm_min;
+			value.second = (SQLUSMALLINT)s->tm_sec;
 		}
 	};
 
@@ -260,6 +275,9 @@ namespace sqlcpp::sqlserver {
 			else if constexpr (std::is_same_v<sqlserver_date, T>) {
 				return std::pair{ SQL_C_TYPE_DATE ,SQL_TYPE_DATE };
 			}
+			else if constexpr (std::is_same_v<sqlserver_datetime, T>) {
+				return std::pair{ SQL_C_TYPE_TIMESTAMP ,SQL_TYPE_TIMESTAMP };
+			}
 			else {
 				static_assert(always_false_v<T>, "can not map to sqlserver type");
 			}
@@ -299,7 +317,14 @@ namespace sqlcpp::sqlserver {
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_date>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, /*sizeof(SQL_DATE_STRUCT)*/10, 0, &t.ymd_value, 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, &t.value, 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (std::is_same_v<U, sqlserver_datetime>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, &t.value, 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
@@ -355,7 +380,14 @@ namespace sqlcpp::sqlserver {
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_date>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, &v.ymd_value, 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, &v.value, 0, nullptr);
+				if (retcode != SQL_SUCCESS) {
+					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
+				}
+			}
+			else if constexpr (std::is_same_v<U, sqlserver_datetime>) {
+				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, &t.value, 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
