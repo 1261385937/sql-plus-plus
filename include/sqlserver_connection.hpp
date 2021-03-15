@@ -387,7 +387,7 @@ namespace sqlcpp::sqlserver {
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_datetime>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, &t.value, 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, &v.value, 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
