@@ -56,6 +56,11 @@ conn->query<void>("update [dbo].[user] set sex = ? where name = ?", 2, "xixi");
 
 //delete
 conn->query<void>("delete from [dbo].[user] where name = ?", "xixi");
+
+//transaction
+conn->begin_transaction();
+conn->commit_transaction();
+conn->rollback();
 ```
 </br>For mysql single mode just:
 
