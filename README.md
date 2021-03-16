@@ -71,6 +71,7 @@ auto conn = db_ptr->get_conn<conn_type::general>();
 ```
 
 </br>For mysql cluster mode:
+</br>just one seed node ip is ok, sqlpp will find all mgr cluster nodes and distinguish master and slave.
 
 ```c++
 #include "db.hpp"
@@ -85,7 +86,6 @@ auto conn = db_ptr->get_conn<sqlcpp::conn_type::master>();
 auto conn = db_ptr->get_conn<sqlcpp::conn_type::slave>(); 
 //then crud is same like above.
 ```
-Under the example dir, has very detailed examples.
 
 # Maybe do
 1、postgresql
