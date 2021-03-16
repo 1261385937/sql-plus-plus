@@ -85,7 +85,6 @@ auto conn = db_ptr->get_conn<sqlcpp::conn_type::master>();
 auto conn = db_ptr->get_conn<sqlcpp::conn_type::slave>(); 
 //then crud is same like above.
 ```
-Under the example dir, has very detailed examples.
 
 # Maybe do
 1、postgresql
