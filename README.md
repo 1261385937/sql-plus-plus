@@ -62,7 +62,7 @@ conn->begin_transaction();
 conn->commit_transaction();
 conn->rollback();
 
-//deal null column. use std::optional.
+//deal null column. use std::optional. Struct and std::tuple are both ok.
 //if sex is null, std::optional<int> is empty, otherwise has value
 auto cs11 = conn->query<std::tuple<std::string, std::optional<int>>>("select * from [dbo].[user]");
 
