@@ -61,6 +61,14 @@ conn->query<void>("delete from [dbo].[user] where name = ?", "xixi");
 conn->begin_transaction();
 conn->commit_transaction();
 conn->rollback();
+
+//deal null column. use std::optional.
+//if sex is null, std::optional<int> is empty, otherwise has value
+auto cs11 = conn->query<std::tuple<std::string, std::optional<int>>>("select * from [dbo].[user]");
+
+//if sex is empty, then the sex column will be null after inserting into
+std::optional<int> sex;
+conn->query<void>("insert into [dbo].[user] ([name],[sex]) values(?,?)", "xixi", sex);
 ```
 </br>For mysql single mode just:
 
