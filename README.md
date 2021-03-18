@@ -38,7 +38,7 @@ ALTER TABLE [dbo].[user] SET (LOCK_ESCALATION = TABLE)
 conn->query<void>("insert into [dbo].[user] values(?,?)", "xixi", 1);
 
 //read
-auto names = conn->query<std::string>("select name from [dbo].[user]");
+std::vector<std::string> names = conn->query<std::string>("select name from [dbo].[user]");
 
 struct info {
 	std::string name;
@@ -46,10 +46,10 @@ struct info {
 	REFLECT(info, name, sex);
 };
 auto cs1 = conn->query<std::tuple<std::string, int>>("select * from [dbo].[user]");
-auto cs2 = conn->query<info>("select * from [dbo].[user]");
+std::vector<info> cs2 = conn->query<info>("select * from [dbo].[user]");
 
 auto ns = conn->query<int>("select sex from [dbo].[user] where name = ?", "xixi");
-auto sn = conn->query<int>("select sex from [dbo].[user] where name = ? and sex = ?", "xixi", 1);
+std::vector<int> sn = conn->query<int>("select sex from [dbo].[user] where name = ? and sex = ?", "xixi", 1);
 
 //update
 conn->query<void>("update [dbo].[user] set sex = ? where name = ?", 2, "xixi");
@@ -64,7 +64,8 @@ conn->rollback();
 
 //deal null column. use std::optional.
 //if sex is null, std::optional<int> is empty, otherwise has value
-auto cs11 = conn->query<std::tuple<std::string, std::optional<int>>>("select * from [dbo].[user]");
+std::vector<std::tuple<std::string, std::optional<int>>> cs11 =
+ conn->query<std::tuple<std::string, std::optional<int>>>("select * from [dbo].[user]");
 
 //if sex is empty, then the sex column will be null after inserting into
 std::optional<int> sex;
