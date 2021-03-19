@@ -321,14 +321,14 @@ namespace sqlcpp::sqlserver {
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_date>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, const_cast<U*>(&t.value), 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, const_cast<SQL_DATE_STRUCT*>(&t.value), 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_datetime>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, const_cast<U*>(&t.value), 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(t).first, (SQLSMALLINT)sqlserver_type_map(t).second, 0, 0, const_cast<SQL_TIMESTAMP_STRUCT*>(&t.value), 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
@@ -384,14 +384,14 @@ namespace sqlcpp::sqlserver {
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_date>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, /*sizeof(SQL_DATE_STRUCT)*/0, 0, const_cast<U*>(&v.value), 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, const_cast<SQL_DATE_STRUCT*>(&v.value), 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
 			}
 			else if constexpr (std::is_same_v<U, sqlserver_datetime>) {
 				auto retcode = SQLBindParameter(stmt_, index, SQL_PARAM_INPUT,
-					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, const_cast<U*>(&v.value), 0, nullptr);
+					(SQLSMALLINT)sqlserver_type_map(v).first, (SQLSMALLINT)sqlserver_type_map(v).second, 0, 0, const_cast<SQL_TIMESTAMP_STRUCT*>(&v.value), 0, nullptr);
 				if (retcode != SQL_SUCCESS) {
 					throw except::sqlserver_exception("SQLBindParameter error: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 				}
