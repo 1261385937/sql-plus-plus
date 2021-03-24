@@ -84,7 +84,7 @@ namespace sqlcpp::sqlserver {
 			}
 
 			retcode = SQLAllocHandle(SQL_HANDLE_DBC, env_, &dbc_);
-			if (retcode != SQL_SUCCESS) {				
+			if (retcode != SQL_SUCCESS) {
 				throw except::sqlserver_exception("SQLAllocHandle(dbc) error:" + sqlserver_error(env_, SQL_HANDLE_ENV));
 			}
 
@@ -105,7 +105,12 @@ namespace sqlcpp::sqlserver {
 
 		void execute(const std::string& sql) {
 			auto retcode = SQLExecDirect(stmt_, (SQLCHAR*)sql.data(), SQL_NTS);
-			if (retcode != SQL_SUCCESS) {
+			//If SQLExecute executes a searched update, insert, or delete statement
+			//that does not affect any rows at the data source, the call to SQLExecute returns SQL_NO_DATA.
+			if (retcode == SQL_NO_DATA) {
+				;
+			}
+			else if (retcode != SQL_SUCCESS) {
 				is_health_ = false;
 				throw except::sqlserver_exception("Failed to excute sql<" + sql + ">: " + sqlserver_error(stmt_, SQL_HANDLE_STMT));
 			}
@@ -141,7 +146,12 @@ namespace sqlcpp::sqlserver {
 			before_execute<ReturnType>(statement_sql, std::forward<Args>(args)...);
 			//execute
 			auto retcode = SQLExecute(stmt_);
-			if (retcode != SQL_SUCCESS) {
+			//If SQLExecute executes a searched update, insert, or delete statement
+			//that does not affect any rows at the data source, the call to SQLExecute returns SQL_NO_DATA.
+			if (retcode == SQL_NO_DATA) {
+				;
+			}
+			else if (retcode != SQL_SUCCESS) {
 				is_health_ = false;
 				auto error_msg = std::string("failed to SQLExecute : ") + sqlserver_error(stmt_, SQL_HANDLE_STMT);
 				throw except::sqlserver_exception(std::move(error_msg));
@@ -169,7 +179,12 @@ namespace sqlcpp::sqlserver {
 			before_execute<ReturnType>(statement_sql, std::forward<Args>(args)...);
 			//execute
 			auto retcode = SQLExecute(stmt_);
-			if (retcode != SQL_SUCCESS) {
+			//If SQLExecute executes a searched update, insert, or delete statement
+			//that does not affect any rows at the data source, the call to SQLExecute returns SQL_NO_DATA.
+			if (retcode == SQL_NO_DATA) {
+				;
+			}
+			else if (retcode != SQL_SUCCESS) {
 				is_health_ = false;
 				auto error_msg = std::string("failed to SQLExecute : ") + sqlserver_error(stmt_, SQL_HANDLE_STMT);
 				throw except::sqlserver_exception(std::move(error_msg));
@@ -192,7 +207,12 @@ namespace sqlcpp::sqlserver {
 			before_execute<void>(statement_sql, std::forward<Args>(args)...);
 
 			auto retcode = SQLExecute(stmt_);
-			if (retcode != SQL_SUCCESS) {
+			//If SQLExecute executes a searched update, insert, or delete statement
+			//that does not affect any rows at the data source, the call to SQLExecute returns SQL_NO_DATA.
+			if (retcode == SQL_NO_DATA) {
+				;
+			}
+			else if(retcode != SQL_SUCCESS) {
 				is_health_ = false;
 				auto error_msg = std::string("failed to SQLExecute : ") + sqlserver_error(stmt_, SQL_HANDLE_STMT);
 				throw except::sqlserver_exception(std::move(error_msg));
